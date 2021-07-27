@@ -14,8 +14,11 @@ from schema import rawDataSchema, threadDataSchema, socialDataSchema
 def consume():
     bootstrap_server = "127.0.0.1:9092"
     topicName = "raw_data"
+
     # create spark session
     spark = SparkSession.builder.appName("SparkKafkaConsumer").getOrCreate()
+    spark.sparkContext.setLogLevel("ERROR")
+
     # create streaming dataframe
     data = spark \
         .readStream \
@@ -25,23 +28,41 @@ def consume():
         .option("startingOffsets", "earliest") \
         .load()
 
-    transformed = data.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")\
+    transformed = data.selectExpr("CAST(value AS STRING)")
+    schema = transformed.printSchema()
 
     # select data for sql db
-    stream = transformed.writeStream \
-        .format("csv") \
-        .option("format", "append") \
-        .option("path", "checkpointlocation") \
-        .option("checkpointLocation", "checkpointlocation") \
-        .queryName("test") \
-        .outputMode("append") \
-        .start() \
+    # stream = transformed.writeStream \
+    #     .format("csv") \
+    #     .option("format", "append") \
+    #     .option("path", "checkpointlocation") \
+    #     .option("checkpointLocation", "checkpointlocation") \
+    #     .queryName("test") \
+    #     .outputMode("append") \
+    #     .start() \
         #.awaitTermination()
     # .foreachBatch(foreach_batch_function) \
-    # clean = stream.select('*')
-    # df = stream.show()
-    return transformed
 
+    # testing print to console what was selected
+    stream_test = schema \
+        .writeStream \
+        .outputMode("update") \
+        .option("truncate", "false") \
+        .format("console") \
+        .start()
+
+    stream_test.awaitTermination()
+    return schema
+
+
+
+# test
+#         .writeStream \
+#         .trigger(processingTime='1 seconds') \
+#         .outputMode("update") \
+#         .option("truncate", "false")\
+#         .format("console") \
+#         .start()
 # consumer = KafkaConsumer(topicName,
 #                          bootstrap_servers=bootstrap_server,
 #                          auto_offset_reset='earliest',
