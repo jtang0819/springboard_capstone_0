@@ -12,6 +12,7 @@ from schema import rawDataSchema, threadDataSchema, socialDataSchema
 
 
 def consume():
+    print("begin consume")
     bootstrap_server = "127.0.0.1:9092"
     topicName = "raw_data"
 
@@ -44,7 +45,7 @@ def consume():
     # .foreachBatch(foreach_batch_function) \
 
     # testing print to console what was selected
-    stream_test = schema \
+    stream_test = transformed \
         .writeStream \
         .outputMode("update") \
         .option("truncate", "false") \
@@ -52,6 +53,7 @@ def consume():
         .start()
 
     stream_test.awaitTermination()
+    print("end consume")
     return schema
 
 
