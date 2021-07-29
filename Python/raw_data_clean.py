@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from schema import new_schema
 
-db_target_properties = {"user": "root", "password": "jordan"}
+db_target_properties = {"user": "root", "password": "jordan", "driver": 'com.mysql.cj.jdbc.Driver'}
 
 
 def consume():
@@ -12,7 +12,6 @@ def consume():
 
     # create spark session
     spark = SparkSession.builder.appName("SparkKafkaConsumer") \
-        .config("spark.jars", "C:\Program Files\MySQL\mysql-connector-java-8.0.26\mysql-connector-java-8.0.26.jar") \
         .getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
 
@@ -26,16 +25,17 @@ def consume():
         .load() \
         .select(from_json(col("value").cast("string"), new_schema).alias("raw_data"))
 
-    # print("Print schema of data")
+    print("Print schema of data")
     # TODO rename uuid to master_uuid
-    data1 = data.withColumnRenamed("raw_data.uuid", "master_uuid")
-    data1.printSchema()
+    data.withColumnRenamed("raw_data.uuid", "master_uuid").printSchema()
+    # data1.printSchema()
     # data.printSchema()
     # df = data.withColumnRenamed("uuid", "master_uuid")
     # df.printSchema()
 
     # select data for sql db
     social_data = data.select("raw_data.uuid", "raw_data.thread.social.*")
+    social_data.printSchema()
     thread_data = data.select("raw_data.uuid",
                               "raw_data.thread.site_full",
                               "raw_data.thread.main_image",
@@ -53,6 +53,7 @@ def consume():
                               "raw_data.thread.published",
                               "raw_data.thread.replies_count",
                               "raw_data.thread.uuid")
+    thread_data.printSchema()
 
     # social_data.printSchema()
     # thread_data.printSchema()
@@ -60,8 +61,10 @@ def consume():
     # loading social_data into table social_data
 
     def foreach_batch_function(df, epoch_id):
+        print("Begin write to DB")
         df.write.jdbc(url='jdbc:mysql://localhost:3306/capstone_project',
-                      table="social_data", properties=db_target_properties)
+                      table="social_data", properties=db_target_properties, mode="append")
+        print("Complete write to DB")
         pass
     social_load = social_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function).start()
     social_load.awaitTermination()
