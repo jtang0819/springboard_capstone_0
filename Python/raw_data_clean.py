@@ -2,14 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from schema import new_schema
 
-
-# db_target_properties = {"user":"xxxx", "password":"yyyyy"}
-
-
-# def foreach_batch_function(df, epoch_id):
-#     print(df.collect())
-#     # df.write.jdbc(url='jdbc:mysql://172.16.23.27:30038/securedb',  table="sparkkafka",  properties=db_target_properties)
-#     pass
+db_target_properties = {"user": "root", "password": "jordan"}
 
 
 def consume():
@@ -18,7 +11,9 @@ def consume():
     topicName = "raw_data"
 
     # create spark session
-    spark = SparkSession.builder.appName("SparkKafkaConsumer").getOrCreate()
+    spark = SparkSession.builder.appName("SparkKafkaConsumer") \
+        .config("spark.jars", "C:\Program Files\MySQL\mysql-connector-java-8.0.26\mysql-connector-java-8.0.26.jar") \
+        .getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
 
     # create streaming dataframe
@@ -28,17 +23,49 @@ def consume():
         .option("kafka.bootstrap.servers", bootstrap_server) \
         .option("subscribe", topicName) \
         .option("startingOffsets", "earliest") \
-        .load()
+        .load() \
+        .select(from_json(col("value").cast("string"), new_schema).alias("raw_data"))
 
-    transformed = data.selectExpr("CAST(key AS STRING)",
-                                  "CAST(value AS STRING)")
-    df = transformed.select(col("key").cast("string"),
-                            from_json(col("value").cast("string"), new_schema))
-    print("Print schema of data")
-    transformed.printSchema()
-    df.printSchema()
+    # print("Print schema of data")
+    # TODO rename uuid to master_uuid
+    data1 = data.withColumnRenamed("raw_data.uuid", "master_uuid")
+    data1.printSchema()
+    # data.printSchema()
+    # df = data.withColumnRenamed("uuid", "master_uuid")
+    # df.printSchema()
 
     # select data for sql db
+    social_data = data.select("raw_data.uuid", "raw_data.thread.social.*")
+    thread_data = data.select("raw_data.uuid",
+                              "raw_data.thread.site_full",
+                              "raw_data.thread.main_image",
+                              "raw_data.thread.site_section",
+                              "raw_data.thread.section_title",
+                              "raw_data.thread.url",
+                              "raw_data.thread.country",
+                              "raw_data.thread.title",
+                              "raw_data.thread.performance_score",
+                              "raw_data.thread.site",
+                              "raw_data.thread.participants_count",
+                              "raw_data.thread.title_full",
+                              "raw_data.thread.spam_score",
+                              "raw_data.thread.site_type",
+                              "raw_data.thread.published",
+                              "raw_data.thread.replies_count",
+                              "raw_data.thread.uuid")
+
+    # social_data.printSchema()
+    # thread_data.printSchema()
+    # load data into db
+    # loading social_data into table social_data
+
+    def foreach_batch_function(df, epoch_id):
+        df.write.jdbc(url='jdbc:mysql://localhost:3306/capstone_project',
+                      table="social_data", properties=db_target_properties)
+        pass
+    social_load = social_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function).start()
+    social_load.awaitTermination()
+
 
     # debug : testing print to console what was selected
     # stream_test = transformed \
@@ -50,13 +77,4 @@ def consume():
     # stream_test.awaitTermination()
 
     print("end consume")
-    return df
-
-
-# consumer = KafkaConsumer(topicName,
-#                          bootstrap_servers=bootstrap_server,
-#                          auto_offset_reset='earliest',
-#                          enable_auto_commit=True)
-# for msg in consumer:
-#     print(str(msg.topic) + 'P' + str(msg.partition) + 'OFF' + str(msg.offset), msg.value)
-# print(type(msg.value))
+    return social_load
