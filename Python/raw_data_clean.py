@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
-from schema import rawDataSchema, threadDataSchema, socialDataSchema
+from pyspark.sql.functions import from_json, col
+from schema import new_schema
 
 
 # db_target_properties = {"user":"xxxx", "password":"yyyyy"}
@@ -29,42 +30,29 @@ def consume():
         .option("startingOffsets", "earliest") \
         .load()
 
-    transformed = data.selectExpr("CAST(value AS STRING)")
-    schema = transformed.printSchema()
+    transformed = data.selectExpr("CAST(key AS STRING)",
+                                  "CAST(value AS STRING)")
+    df = transformed.select(col("key").cast("string"),
+                            from_json(col("value").cast("string"), new_schema))
+    print("Print schema of data")
+    transformed.printSchema()
+    df.printSchema()
 
     # select data for sql db
-    # stream = transformed.writeStream \
-    #     .format("csv") \
-    #     .option("format", "append") \
-    #     .option("path", "checkpointlocation") \
-    #     .option("checkpointLocation", "checkpointlocation") \
-    #     .queryName("test") \
-    #     .outputMode("append") \
-    #     .start() \
-        #.awaitTermination()
-    # .foreachBatch(foreach_batch_function) \
 
-    # testing print to console what was selected
-    stream_test = transformed \
-        .writeStream \
-        .outputMode("update") \
-        .option("truncate", "false") \
-        .format("console") \
-        .start()
+    # debug : testing print to console what was selected
+    # stream_test = transformed \
+    #     .writeStream \
+    #     .outputMode("update") \
+    #     .option("truncate", "false") \
+    #     .format("console") \
+    #     .start()
+    # stream_test.awaitTermination()
 
-    stream_test.awaitTermination()
     print("end consume")
-    return schema
+    return df
 
 
-
-# test
-#         .writeStream \
-#         .trigger(processingTime='1 seconds') \
-#         .outputMode("update") \
-#         .option("truncate", "false")\
-#         .format("console") \
-#         .start()
 # consumer = KafkaConsumer(topicName,
 #                          bootstrap_servers=bootstrap_server,
 #                          auto_offset_reset='earliest',
