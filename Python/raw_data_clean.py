@@ -25,50 +25,88 @@ def consume():
         .load() \
         .select(from_json(col("value").cast("string"), new_schema).alias("raw_data"))
 
-    print("Print schema of data")
-    # TODO rename uuid to master_uuid
-    data.withColumnRenamed("raw_data.uuid", "master_uuid").printSchema()
-    # data1.printSchema()
-    # data.printSchema()
-    # df = data.withColumnRenamed("uuid", "master_uuid")
-    # df.printSchema()
-
     # select data for sql db
-    social_data = data.select("raw_data.uuid", "raw_data.thread.social.*")
-    social_data.printSchema()
-    thread_data = data.select("raw_data.uuid",
-                              "raw_data.thread.site_full",
-                              "raw_data.thread.main_image",
-                              "raw_data.thread.site_section",
-                              "raw_data.thread.section_title",
-                              "raw_data.thread.url",
-                              "raw_data.thread.country",
-                              "raw_data.thread.title",
-                              "raw_data.thread.performance_score",
-                              "raw_data.thread.site",
-                              "raw_data.thread.participants_count",
-                              "raw_data.thread.title_full",
-                              "raw_data.thread.spam_score",
-                              "raw_data.thread.site_type",
-                              "raw_data.thread.published",
-                              "raw_data.thread.replies_count",
-                              "raw_data.thread.uuid")
-    thread_data.printSchema()
+    social_data = data.selectExpr("raw_data.uuid as master_uuid",
+                                  "raw_data.thread.social.facebook.comments as facebook_comments",
+                                  "raw_data.thread.social.facebook.likes as facebook_likes",
+                                  "raw_data.thread.social.facebook.shares as facebook_shares",
+                                  "raw_data.thread.social.gplus.shares as gplus_shares",
+                                  "raw_data.thread.social.linkedin.shares as linkedin_shares",
+                                  "raw_data.thread.social.pinterest.shares as pinterest_shares",
+                                  "raw_data.thread.social.stumbledupon.shares as stumbledupon_shares",
+                                  "raw_data.thread.social.vk.shares as vk_shares"
+                                  )
 
-    # social_data.printSchema()
-    # thread_data.printSchema()
+    thread_data = data.selectExpr("raw_data.uuid as master_uuid",
+                                  "raw_data.thread.site_full",
+                                  "raw_data.thread.main_image",
+                                  "raw_data.thread.site_section",
+                                  "raw_data.thread.section_title",
+                                  "raw_data.thread.url",
+                                  "raw_data.thread.country",
+                                  "raw_data.thread.title",
+                                  "raw_data.thread.performance_score",
+                                  "raw_data.thread.site",
+                                  "raw_data.thread.participants_count",
+                                  "raw_data.thread.title_full",
+                                  "raw_data.thread.spam_score",
+                                  "raw_data.thread.site_type",
+                                  "raw_data.thread.published",
+                                  "raw_data.thread.replies_count",
+                                  "raw_data.thread.uuid")
+
+    clean_data = data.selectExpr("raw_data.uuid as master_uuid",
+                                 "raw_data.author",
+                                 "raw_data.crawled",
+                                 "raw_data.entities.locations[0] as entities_locations",
+                                 "raw_data.entities.organizations[0] as entities_organizations",
+                                 "raw_data.entities.persons[0] as entities_persons",
+                                 "raw_data.external_links[0] as external_links",
+                                 "raw_data.highlightText",
+                                 "raw_data.highlightTitle",
+                                 "raw_data.language",
+                                 "raw_data.locations[0] as locations",
+                                 "raw_data.ord_in_thread",
+                                 "raw_data.organizations[0] as organizations",
+                                 "raw_data.persons[0] as persons",
+                                 "raw_data.published",
+                                 "raw_data.text",
+                                 "raw_data.title",
+                                 "raw_data.url"
+                                 )
+    social_data.printSchema()
+    thread_data.printSchema()
+    clean_data.printSchema()
+
     # load data into db
     # loading social_data into table social_data
-
-    def foreach_batch_function(df, epoch_id):
+    def foreach_batch_function_social(df, epoch_id):
         print("Begin write to DB")
         df.write.jdbc(url='jdbc:mysql://localhost:3306/capstone_project',
-                      table="social_data", properties=db_target_properties, mode="append")
+                      table="social_data", properties=db_target_properties, mode="overwrite")
         print("Complete write to DB")
         pass
-    social_load = social_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function).start()
-    social_load.awaitTermination()
+    social_load = social_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_social).start()
+    # social_load.awaitTermination()
 
+    # loading thread_data into table thread_data
+    def foreach_batch_function_thread(df, epoch_id):
+        print("Begin write to DB")
+        df.write.jdbc(url='jdbc:mysql://localhost:3306/capstone_project',
+                      table="thread_data", properties=db_target_properties, mode="overwrite")
+        print("Complete write to DB")
+        pass
+    thread_load = thread_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_thread).start()
+
+    # loading clean_data into table clean_data
+    def foreach_batch_function_clean(df, epoch_id):
+        print("Begin write to DB")
+        df.write.jdbc(url='jdbc:mysql://localhost:3306/capstone_project',
+                      table="clean_data", properties=db_target_properties, mode="overwrite")
+        print("Complete write to DB")
+        pass
+    clean_load = clean_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_thread).start()
+    clean_load.awaitTermination()
 
     # debug : testing print to console what was selected
     # stream_test = transformed \
