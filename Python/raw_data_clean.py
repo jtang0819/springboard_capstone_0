@@ -74,39 +74,39 @@ def consume():
                                  "raw_data.title",
                                  "raw_data.url"
                                  )
-    social_data.printSchema()
-    thread_data.printSchema()
-    clean_data.printSchema()
+    # social_data.printSchema()
+    # thread_data.printSchema()
+    # clean_data.printSchema()
 
     # load data into db
     # loading social_data into table social_data
     def foreach_batch_function_social(df, epoch_id):
-        print("Begin write to DB")
+        print("Begin social_data write to DB")
         df.write.jdbc(url='jdbc:mysql://localhost:3306/capstone_project',
                       table="social_data", properties=db_target_properties, mode="overwrite")
-        print("Complete write to DB")
+        print("Complete social_data write to DB")
         pass
-    social_load = social_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_social).start()
-    # social_load.awaitTermination()
 
     # loading thread_data into table thread_data
     def foreach_batch_function_thread(df, epoch_id):
-        print("Begin write to DB")
+        print("Begin thread_data write to DB")
         df.write.jdbc(url='jdbc:mysql://localhost:3306/capstone_project',
-                      table="thread_data", properties=db_target_properties, mode="overwrite")
-        print("Complete write to DB")
+                      table="thread_data", properties=db_target_properties, mode="overwrite").option("mode",)
+        print("Complete thread_data write to DB")
         pass
-    thread_load = thread_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_thread).start()
 
     # loading clean_data into table clean_data
     def foreach_batch_function_clean(df, epoch_id):
-        print("Begin write to DB")
+        print("Begin clean_data write to DB")
         df.write.jdbc(url='jdbc:mysql://localhost:3306/capstone_project',
                       table="clean_data", properties=db_target_properties, mode="overwrite")
-        print("Complete write to DB")
+        print("Complete clean_data write to DB")
         pass
+
+    social_load = social_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_social).start()
+    thread_load = thread_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_thread).start()
     clean_load = clean_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_thread).start()
-    clean_load.awaitTermination()
+    spark.streams.awaitAnyTermination()
 
     # debug : testing print to console what was selected
     # stream_test = transformed \
@@ -116,6 +116,4 @@ def consume():
     #     .format("console") \
     #     .start()
     # stream_test.awaitTermination()
-
-    print("end consume")
-    return social_load
+    return "Consume Complete"
