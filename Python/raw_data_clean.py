@@ -1,8 +1,9 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from schema import new_schema
+from credentials import user, password
 
-db_target_properties = {"user": "root", "password": "jordan", "driver": 'com.mysql.cj.jdbc.Driver'}
+db_target_properties = {"user": user, "password": password, "driver": 'com.mysql.cj.jdbc.Driver'}
 
 
 def consume():
@@ -91,7 +92,7 @@ def consume():
     def foreach_batch_function_thread(df, epoch_id):
         print("Begin thread_data write to DB")
         df.write.jdbc(url='jdbc:mysql://localhost:3306/capstone_project',
-                      table="thread_data", properties=db_target_properties, mode="overwrite").option("mode",)
+                      table="thread_data", properties=db_target_properties, mode="overwrite")
         print("Complete thread_data write to DB")
         pass
 
@@ -103,9 +104,9 @@ def consume():
         print("Complete clean_data write to DB")
         pass
 
-    social_load = social_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_social).start()
-    thread_load = thread_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_thread).start()
-    clean_load = clean_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_thread).start()
+    social_load = social_data.writeStream.outputMode("update").foreachBatch(foreach_batch_function_social).start()
+    thread_load = thread_data.writeStream.outputMode("update").foreachBatch(foreach_batch_function_thread).start()
+    clean_load = clean_data.writeStream.outputMode("update").foreachBatch(foreach_batch_function_clean).start()
     spark.streams.awaitAnyTermination()
 
     # debug : testing print to console what was selected
