@@ -1,4 +1,4 @@
-CREATE TABLE clean_table (
+CREATE TABLE clean_data (
 master_uuid VARCHAR(255) PRIMARY KEY,
 author VARCHAR(255),
 entities_locations VARCHAR(255),

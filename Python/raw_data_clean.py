@@ -104,17 +104,18 @@ def consume():
         print("Complete clean_data write to DB")
         pass
 
-    social_load = social_data.writeStream.outputMode("update").foreachBatch(foreach_batch_function_social).start()
-    thread_load = thread_data.writeStream.outputMode("update").foreachBatch(foreach_batch_function_thread).start()
-    clean_load = clean_data.writeStream.outputMode("update").foreachBatch(foreach_batch_function_clean).start()
-    spark.streams.awaitAnyTermination()
+    social_load = social_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_social).start()
+    thread_load = thread_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_thread).start()
+    clean_load = clean_data.writeStream.outputMode("append").foreachBatch(foreach_batch_function_clean).start()
+
 
     # debug : testing print to console what was selected
-    # stream_test = transformed \
+    # stream_test = data \
     #     .writeStream \
     #     .outputMode("update") \
     #     .option("truncate", "false") \
     #     .format("console") \
     #     .start()
     # stream_test.awaitTermination()
+    spark.streams.awaitAnyTermination()
     return "Consume Complete"
