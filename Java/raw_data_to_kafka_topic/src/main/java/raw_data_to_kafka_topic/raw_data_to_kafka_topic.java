@@ -32,7 +32,7 @@ public class raw_data_to_kafka_topic {
         }));
 
         //loop json files on local computer
-        File dir = new File("test_folder");
+        File dir = new File("target_folder");
         File[] directoryListing = dir.listFiles();
 
         if (directoryListing != null) {

@@ -36,7 +36,9 @@ spam_score FLOAT,
 site_type VARCHAR(255),
 published VARCHAR(255),
 replies_count VARCHAR(255),
-uuid VARCHAR(255)
+uuid VARCHAR(255),
+created_on datetime default current_timestamp,
+updated_at datetime default current_timestamp on update current_timestamp
 );
 
 CREATE TABLE social_data (

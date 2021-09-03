@@ -54,7 +54,8 @@ def consume():
                                   "raw_data.thread.site_type",
                                   "raw_data.thread.published",
                                   "raw_data.thread.replies_count",
-                                  "raw_data.thread.uuid")
+                                  "raw_data.thread.uuid",
+                                  "current_timestamp() as created_on")
 
     clean_data = data.selectExpr("raw_data.uuid as master_uuid",
                                  "raw_data.author",
